@@ -1,0 +1,30 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+dist/
+build/
+test_env/
+.venv/
+venv/
+.env
+*.pkl
+*.joblib
+models/*/
+!models/.gitkeep
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.log
+
+# Runtime / local outputs
+logs/
+monitoring/
+training_results.txt
+predictions.csv
+test_data.csv
+knowledge_base.json
+
+# IDE / legacy comparison tree
+.windsurf/
+automl-engine-master/

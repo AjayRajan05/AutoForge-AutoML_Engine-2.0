@@ -69,7 +69,23 @@ class SimpleNeuralNetwork(BaseEstimator, ClassifierMixin, RegressorMixin):
         self.is_fitted = False
     
     def _create_model(self, input_dim: int) -> Union[MLPClassifier, MLPRegressor]:
-        """Create neural network model based on input dimensions"""
+        """
+        Create neural network model based on input dimensions
+        
+        Args:
+            input_dim: Number of input features
+            
+        Returns:
+            Neural network model (classifier or regressor)
+            
+        Raises:
+            ValueError: If input_dim is invalid
+        """
+        # Input validation
+        if not isinstance(input_dim, int) or input_dim <= 0:
+            raise ValueError("input_dim must be a positive integer")
+        
+        # Determine architecture based on input size
         
         # Determine architecture based on input size
         if input_dim < 10:
@@ -290,6 +306,10 @@ class LightGBMWrapper(BaseEstimator, ClassifierMixin, RegressorMixin):
     
     def _create_model(self):
         """Create LightGBM model"""
+        
+        # Check if LightGBM is available
+        if not LIGHTGBM_AVAILABLE:
+            raise ImportError("LightGBM is not available. Install with: pip install lightgbm")
         
         # Determine objective based on task type
         if self.task_type == "classification":

@@ -1,9 +1,31 @@
 """
-AutoForge Systemization Module
+AutoForge Systemization Integration
 """
 
-from .model_versioning import ModelVersioning
-from .lightweight_monitoring import LightweightMonitor
 from .ab_testing import ABTestingFramework
+from .lightweight_monitoring import LightweightMonitor
+from .model_versioning import ModelVersioning
 
-__all__ = ['ModelVersioning', 'LightweightMonitor', 'ABTestingFramework']
+ABTesting = ABTestingFramework
+LightweightMonitoring = LightweightMonitor
+
+from .systemization_integration import (
+    SystemizationIntegrator,
+    systemization_integrator,
+    setup_autoforge_monitoring,
+    run_autoforge_ab_test,
+    save_autoforge_version,
+)
+
+__all__ = [
+    'ABTestingFramework',
+    'LightweightMonitor',
+    'ModelVersioning',
+    'ABTesting',
+    'LightweightMonitoring',
+    'SystemizationIntegrator',
+    'systemization_integrator',
+    'setup_autoforge_monitoring',
+    'run_autoforge_ab_test',
+    'save_autoforge_version',
+]

@@ -1,8 +1,17 @@
 """
-AutoForge Ensemble Module
+AutoForge Ensemble Integration
 """
 
-from .stacker import AdvancedStacker
-from .blender import Blender
+from .ensemble_integration import (
+    EnsembleIntegrator,
+    ensemble_integrator,
+    create_ensemble_pipeline,
+    evaluate_ensemble_performance,
+)
 
-__all__ = ['AdvancedStacker', 'Blender']
+__all__ = [
+    'EnsembleIntegrator',
+    'ensemble_integrator',
+    'create_ensemble_pipeline',
+    'evaluate_ensemble_performance',
+]

@@ -1,6 +1,7 @@
 """
-🏆 TRULY BULLETPROOF AUTOML
-Simplified but actually working bulletproof system
+TRULY BULLETPROOF AUTOML — DEPRECATED standalone sklearn path.
+
+Prefer UnifiedAutoML or AutoForgeClassifier/AutoForgeRegressor for new code.
 """
 
 import logging
@@ -12,7 +13,7 @@ import numpy as np
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.linear_model import LogisticRegression, LinearRegression
 from sklearn.metrics import accuracy_score, r2_score
-from sklearn.model_selection import cross_val_score
+from sklearn.model_selection import cross_val_score, train_test_split
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.impute import SimpleImputer
 
@@ -41,15 +42,25 @@ class TrulyBulletproofAutoML:
         self.max_trials = max_trials
         self.simple_mode = simple_mode
         
-        # Simple model registry
+        # Simple model registry with configurable parameters
+        try:
+            from config.settings import get_config_value
+            default_n_estimators = get_config_value('models', 'random_forest_n_estimators', 50)
+            default_max_depth = get_config_value('models', 'random_forest_max_depth', 5)
+            default_max_iter = get_config_value('models', 'logistic_regression_max_iter', 100)
+        except ImportError:
+            default_n_estimators = 50
+            default_max_depth = 5
+            default_max_iter = 100
+        
         self.models = {
             'classification': [
-                ('logistic_regression', LogisticRegression(max_iter=100)),
-                ('random_forest', RandomForestClassifier(n_estimators=50, max_depth=5)),
+                ('logistic_regression', LogisticRegression(max_iter=default_max_iter)),
+                ('random_forest', RandomForestClassifier(n_estimators=default_n_estimators, max_depth=default_max_depth)),
             ],
             'regression': [
                 ('linear_regression', LinearRegression()),
-                ('random_forest', RandomForestRegressor(n_estimators=50, max_depth=5)),
+                ('random_forest', RandomForestRegressor(n_estimators=default_n_estimators, max_depth=default_max_depth)),
             ]
         }
         
@@ -285,7 +296,6 @@ class TrulyBulletproofAutoML:
             
             if self.task_type == 'classification':
                 # Use simple train_test_split instead of cross_val_score to avoid issues
-                from sklearn.model_selection import train_test_split
                 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
                 model.fit(X_train, y_train)
                 predictions = model.predict(X_test)
@@ -300,7 +310,6 @@ class TrulyBulletproofAutoML:
             logger.warning(f"Model evaluation failed: {str(e)}")
             # Fallback to simple evaluation
             try:
-                from sklearn.model_selection import train_test_split
                 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
                 model.fit(X_train, y_train)
                 predictions = model.predict(X_test)

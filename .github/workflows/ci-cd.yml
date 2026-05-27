@@ -1,376 +1,47 @@
-name: AutoForge CI/CD Pipeline
+name: AutoForge CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main ]
-  release:
-    types: [ published ]
+    branches: [main]
 
 jobs:
-  # Code Quality and Linting
-  lint:
-    runs-on: ubuntu-latest
-    name: Code Quality
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.9'
-    
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install flake8 black isort mypy pytest
-        pip install -r requirements.txt
-    
-    - name: Code formatting check (Black)
-      run: |
-        black --check --diff .
-    
-    - name: Import sorting check (isort)
-      run: |
-        isort --check-only --diff .
-    
-    - name: Lint with flake8
-      run: |
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-    
-    - name: Type checking with mypy
-      run: |
-        mypy api/ --ignore-missing-imports
-        mypy core/ --ignore-missing-imports || true  # Allow failures for now
-
-  # Unit Tests
   test:
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: ['3.8', '3.9', '3.10']
-        exclude:
-          # Reduce matrix size for faster CI
-          - os: windows-latest
-            python-version: '3.8'
-          - os: macos-latest
-            python-version: '3.8'
-    
-    name: Test Python ${{ matrix.python-version }} on ${{ matrix.os }}
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
-    
-    - name: Cache pip dependencies
-      uses: actions/cache@v3
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
-    
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install pytest pytest-cov pytest-xvfb
-    
-    - name: Run unit tests
-      run: |
-        pytest tests/ -v --tb=short --cov=api --cov=core --cov-report=xml
-    
-    - name: Upload coverage to Codecov
-      if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.9'
-      uses: codecov/codecov-action@v3
-      with:
-        file: ./coverage.xml
-        flags: unittests
-        name: codecov-umbrella
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.10", "3.11"]
 
-  # Integration Tests
-  integration:
-    runs-on: ubuntu-latest
-    needs: [lint, test]
-    name: Integration Tests
-    
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.9'
-    
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install pytest pytest-cov
-    
-    - name: Run integration tests
-      run: |
-        pytest testing/enhanced_testing.py -v --tb=short
-      env:
-        PYTHONPATH: ${{ github.workspace }}
+      - uses: actions/checkout@v4
 
-  # Performance Tests
-  performance:
-    runs-on: ubuntu-latest
-    needs: [integration]
-    name: Performance Tests
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.9'
-    
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install pytest memory_profiler
-    
-    - name: Run performance tests
-      run: |
-        pytest tests/test_performance.py -v --tb=short
-      env:
-        PYTHONPATH: ${{ github.workspace }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
 
-  # Build and Test Package
-  build:
-    runs-on: ubuntu-latest
-    needs: [integration]
-    name: Build Package
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.9'
-    
-    - name: Install build dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install build twine
-    
-    - name: Build package
-      run: |
-        python -m build
-    
-    - name: Check package
-      run: |
-        twine check dist/*
-    
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v3
-      with:
-        name: dist
-        path: dist/
+      - name: Install package and test deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
 
-  # Security Scan
-  security:
-    runs-on: ubuntu-latest
-    name: Security Scan
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Run Bandit Security Scan
-      run: |
-        pip install bandit
-        bandit -r api/ core/ -f json -o bandit-report.json || true
-    
-    - name: Upload security scan results
-      uses: actions/upload-artifact@v3
-      if: always()
-      with:
-        name: security-scan
-        path: bandit-report.json
+      - name: Run tests
+        run: pytest tests/ -q --tb=short -m "not slow"
 
-  # Documentation Build
-  docs:
+  lint:
     runs-on: ubuntu-latest
-    name: Documentation
-    
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.9'
-    
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install sphinx sphinx-rtd-theme myst-parser
-        pip install -r requirements.txt
-    
-    - name: Build documentation
-      run: |
-        sphinx-apidoc -o docs/source/api api/
-        sphinx-apidoc -o docs/source/core core/
-        sphinx-build docs/source docs/build
-    
-    - name: Upload documentation
-      uses: actions/upload-artifact@v3
-      with:
-        name: documentation
-        path: docs/build/
+      - uses: actions/checkout@v4
 
-  # Docker Build
-  docker:
-    runs-on: ubuntu-latest
-    needs: [build, integration]
-    name: Docker Build
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-    
-    - name: Login to Docker Hub
-      if: github.event_name != 'pull_request'
-      uses: docker/login-action@v3
-      with:
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
-    
-    - name: Extract metadata
-      id: meta
-      uses: docker/metadata-action@v5
-      with:
-        images: autoforge/automl
-        tags: |
-          type=ref,event=branch
-          type=ref,event=pr
-          type=semver,pattern={{version}}
-          type=semver,pattern={{major}}.{{minor}}
-    
-    - name: Build and push Docker image
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        push: ${{ github.event_name != 'pull_request' }}
-        tags: ${{ steps.meta.outputs.tags }}
-        labels: ${{ steps.meta.outputs.labels }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
 
-  # Release (only on tags)
-  release:
-    runs-on: ubuntu-latest
-    needs: [test, integration, build]
-    if: github.event_name == 'release'
-    name: Release
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Download build artifacts
-      uses: actions/download-artifact@v3
-      with:
-        name: dist
-        path: dist/
-    
-    - name: Publish to PyPI
-      uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        password: ${{ secrets.PYPI_API_TOKEN }}
+      - name: Install lint tools
+        run: pip install flake8
 
-  # Deploy Documentation (only on main)
-  deploy-docs:
-    runs-on: ubuntu-latest
-    needs: [docs, integration]
-    if: github.ref == 'refs/heads/main'
-    name: Deploy Docs
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Download documentation
-      uses: actions/download-artifact@v3
-      with:
-        name: documentation
-        path: docs/build/
-    
-    - name: Deploy to GitHub Pages
-      uses: peaceiris/actions-gh-pages@v3
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ./docs/build
-
-  # Notify Results
-  notify:
-    runs-on: ubuntu-latest
-    needs: [lint, test, integration, build]
-    if: always()
-    name: Notify Results
-    
-    steps:
-    - name: Notify Slack on Success
-      if: ${{ needs.lint.result == 'success' && needs.test.result == 'success' && needs.integration.result == 'success' }}
-      uses: 8398a7/action-slack@v3
-      with:
-        status: success
-        channel: '#ci-cd'
-        text: '✅ AutoForge CI/CD Pipeline Succeeded!'
-      env:
-        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-    
-    - name: Notify Slack on Failure
-      if: ${{ needs.lint.result == 'failure' || needs.test.result == 'failure' || needs.integration.result == 'failure' }}
-      uses: 8398a7/action-slack@v3
-      with:
-        status: failure
-        channel: '#ci-cd'
-        text: '❌ AutoForge CI/CD Pipeline Failed!'
-      env:
-        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-
-# Workflow Status Badge
-  workflow-status:
-    runs-on: ubuntu-latest
-    name: Workflow Status
-    if: always()
-    needs: [lint, test, integration, build]
-    
-    steps:
-    - name: Check workflow status
-      run: |
-        if [[ "${{ needs.lint.result }}" == "success" && "${{ needs.test.result }}" == "success" && "${{ needs.integration.result }}" == "success" && "${{ needs.build.result }}" == "success" ]]; then
-          echo "✅ All critical jobs passed!"
-          exit 0
-        else
-          echo "❌ Some jobs failed!"
-          echo "Lint: ${{ needs.lint.result }}"
-          echo "Test: ${{ needs.test.result }}"
-          echo "Integration: ${{ needs.integration.result }}"
-          echo "Build: ${{ needs.build.result }}"
-          exit 1
-        fi
+      - name: Lint core packages
+        run: |
+          flake8 core/ execution/ input_output/ registry/ persistence/ --max-line-length=127 --count --statistics

@@ -3,7 +3,17 @@ Adaptive Hyperparameter Optimization with Optuna Pruning and Dynamic Trial Budge
 Smart search, not brute force
 """
 
-import optuna
+try:
+    import optuna
+    from optuna.samplers import TPESampler
+    from optuna.pruners import MedianPruner
+    OPTUNA_AVAILABLE = True
+except ImportError:
+    OPTUNA_AVAILABLE = False
+    optuna = None
+    TPESampler = None
+    MedianPruner = None
+
 import numpy as np
 import pandas as pd
 import logging
@@ -11,9 +21,6 @@ import time
 from typing import List, Tuple, Dict, Any, Optional, Callable
 from sklearn.model_selection import cross_val_score
 from sklearn.metrics import accuracy_score, mean_squared_error
-from optuna.samplers import TPESampler
-from optuna.pruners import MedianPruner
-from optuna.visualization import plot_optimization_history
 import warnings
 
 logger = logging.getLogger(__name__)
@@ -46,6 +53,9 @@ class AdaptiveOptimizer:
             large_dataset_threshold: Dataset size to trigger sampling
             sample_ratio: Fraction of data to sample for large datasets
         """
+        if not OPTUNA_AVAILABLE:
+            raise ImportError("Optuna is not installed. Install with: pip install optuna")
+        
         self.initial_trials = initial_trials
         self.max_trials = max_trials
         self.pruning_patience = pruning_patience
@@ -469,6 +479,47 @@ class AdaptiveOptimizer:
             logger.warning("Matplotlib not available for plotting")
         except Exception as e:
             logger.error(f"Failed to plot optimization history: {e}")
+
+
+    def optimize_with_search_space(
+        self,
+        model,
+        X,
+        y,
+        search_space: Dict[str, Any],
+        scoring: str = "accuracy",
+    ) -> Dict[str, Any]:
+        """Optimize a single model using a parameter search space."""
+        from copy import deepcopy
+
+        model_template = deepcopy(model)
+
+        def objective(trial, X_data, y_data, task_type):
+            params = {}
+            for name, spec in search_space.items():
+                if isinstance(spec, list):
+                    params[name] = trial.suggest_categorical(name, spec)
+                elif isinstance(spec, tuple) and len(spec) >= 3:
+                    low, high, kind = spec[:3]
+                    if kind == "int":
+                        params[name] = trial.suggest_int(name, int(low), int(high))
+                    else:
+                        params[name] = trial.suggest_float(name, float(low), float(high))
+                else:
+                    params[name] = spec
+
+            trial_model = deepcopy(model_template)
+            trial_model.set_params(**params)
+            scores = cross_val_score(trial_model, X_data, y_data, cv=self.cv_folds, scoring=scoring, n_jobs=-1)
+            return float(scores.mean()), type(model).__name__, params
+
+        task_type = "classification" if scoring == "accuracy" else "regression"
+        _, metadata = self.optimize_adaptive(objective, X, y, task_type=task_type)
+        return {
+            "best_params": metadata.get("best_params", {}),
+            "best_score": metadata.get("best_score", -np.inf),
+            "trials_completed": metadata.get("total_trials", 0),
+        }
 
 
 def create_adaptive_optimizer(**kwargs) -> AdaptiveOptimizer:

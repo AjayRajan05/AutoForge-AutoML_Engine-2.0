@@ -15,7 +15,7 @@ from sklearn.preprocessing import StandardScaler
 import warnings
 
 # Import our AutoML system
-from api.automl import AutoML
+from .automl import AutoML
 
 # Try to import competing AutoML systems
 try:

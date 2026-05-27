@@ -6,21 +6,45 @@ Bulletproof AutoML that can handle ANY test scenario
 import logging
 import time
 import warnings
-from typing import Dict, Any, Optional, Union
+from typing import Dict, Any, Optional, Union, List
 import pandas as pd
 import numpy as np
 
-# Import core components
-from .core import AutoMLCoordinator, ExplainabilityManager, MetaLearningManager
+# Import core components with fallback handling
+try:
+    from core.unified_automl import UnifiedAutoML
+except ImportError:
+    UnifiedAutoML = None
+    logging.warning("UnifiedAutoML not available")
 
-# Import enhanced components
+try:
+    from registry.model_registry import model_registry
+except ImportError:
+    model_registry = {}
+    logging.warning("Model registry not available")
+
+try:
+    from registry.pipeline_registry import build_pipeline
+except ImportError:
+    build_pipeline = None
+    logging.warning("Pipeline registry not available")
+
+# Import enhanced components with fallback handling
+try:
+    from core.bulletproof_error_handler import bulletproof_error_handler, bulletproof_method
+except ImportError:
+    bulletproof_error_handler = None
+    bulletproof_method = None
+    logging.warning("Bulletproof error handler not available")
+
+try:
+    from models.registry import MODEL_REGISTRY
+except ImportError:
+    MODEL_REGISTRY = {}
+    logging.warning("Model registry not available")
 from core.universal_parameter_handler import universal_parameter_handler
-from core.bulletproof_error_handler import bulletproof_error_handler, bulletproof_method
 from core.adaptive_resource_manager import adaptive_resource_manager
 from core.failure_memory import failure_memory
-
-# Import model registry
-from models.registry import MODEL_REGISTRY
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +85,10 @@ class EnhancedAutoML:
         logging.basicConfig(level=logging.INFO)
         self.logger = logging.getLogger(__name__)
         
+        # Validate input parameters
+        if constraints is not None and not isinstance(constraints, dict):
+            raise TypeError("constraints must be a dictionary or None")
+        
         # Auto-configure if requested
         if auto_configure:
             self.config = adaptive_resource_manager.auto_configure(constraints)
@@ -87,28 +115,16 @@ class EnhancedAutoML:
         self._enable_advanced_features = enable_advanced_features
         
         # Initialize coordinator with bulletproof configuration
-        try:
-            self.coordinator = AutoMLCoordinator(
-                n_trials=self._n_trials,
-                timeout=self._timeout,
-                cv=self._cv,
-                use_adaptive_optimization=self._use_adaptive_optimization,
-                use_dataset_optimization=self._use_dataset_optimization,
-                use_caching=self._use_caching,
-                show_progress=self._show_progress,
-                enable_advanced_features=self._enable_advanced_features
-            )
-        except Exception as e:
-            self.logger.error(f"Failed to initialize coordinator: {str(e)}")
-            # Use fallback coordinator
-            self.coordinator = self._create_fallback_coordinator()
-        
-        # Meta-learning manager handles pattern learning
-        try:
-            self.meta_learning_manager = MetaLearningManager()
-        except Exception as e:
-            self.logger.warning(f"Failed to initialize meta-learning: {str(e)}")
-            self.meta_learning_manager = None
+        self.coordinator = UnifiedAutoML({
+            'n_trials': self._n_trials,
+            'timeout': self._timeout,
+            'cv': self._cv,
+            'use_adaptive_optimization': self._use_adaptive_optimization,
+            'use_dataset_optimization': self._use_dataset_optimization,
+            'use_caching': self._use_caching,
+            'show_progress': self._show_progress,
+            'enable_advanced_features': self._enable_advanced_features
+        })
         
         # Setup logging
         self.logger = logging.getLogger(__name__)
@@ -141,8 +157,8 @@ class EnhancedAutoML:
             self.logger.error(f"Failed to create fallback coordinator: {str(e)}")
             raise RuntimeError("Unable to initialize any AutoML coordinator")
     
-    @bulletproof_method(max_retries=3)
-    def fit(self, X, y):
+    def fit(self, X: Union[pd.DataFrame, np.ndarray, List], 
+            y: Union[pd.Series, np.ndarray, List]) -> 'EnhancedAutoML':
         """
         Bulletproof fit method that can handle ANY input
         
@@ -152,7 +168,13 @@ class EnhancedAutoML:
             
         Returns:
             Self for method chaining
+            
+        Raises:
+            ValueError: If inputs are invalid
         """
+        if X is None or y is None:
+            raise ValueError("X and y cannot be None")
+        
         self.start_time = time.time()
         
         try:
@@ -198,8 +220,7 @@ class EnhancedAutoML:
                 self.logger.error("Recovery failed, cannot fit model")
                 raise RuntimeError(f"Enhanced AutoML failed to fit: {str(e)}")
     
-    @bulletproof_method(max_retries=2)
-    def predict(self, X):
+    def predict(self, X: Union[pd.DataFrame, np.ndarray, List]) -> np.ndarray:
         """
         Bulletproof predict method
         
@@ -208,7 +229,14 @@ class EnhancedAutoML:
             
         Returns:
             Predictions
+            
+        Raises:
+            ValueError: If X is None
+            RuntimeError: If prediction fails
         """
+        if X is None:
+            raise ValueError("X cannot be None")
+        
         try:
             # Preprocess input
             X_processed = self._preprocess_input(X)
@@ -246,8 +274,7 @@ class EnhancedAutoML:
             else:
                 raise RuntimeError(f"Enhanced AutoML failed to predict: {str(e)}")
     
-    @bulletproof_method(max_retries=2)
-    def predict_proba(self, X):
+    def predict_proba(self, X: Union[pd.DataFrame, np.ndarray, List]) -> np.ndarray:
         """
         Bulletproof predict_proba method
         
@@ -256,7 +283,14 @@ class EnhancedAutoML:
             
         Returns:
             Prediction probabilities
+            
+        Raises:
+            ValueError: If X is None
+            RuntimeError: If prediction fails
         """
+        if X is None:
+            raise ValueError("X cannot be None")
+        
         try:
             # Preprocess input
             X_processed = self._preprocess_input(X)

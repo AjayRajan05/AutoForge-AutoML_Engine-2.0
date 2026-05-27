@@ -33,7 +33,30 @@ class DatasetIntelligence:
             
         Returns:
             Dictionary containing dataset characteristics
+            
+        Raises:
+            ValueError: If input validation fails
+            TypeError: If input types are incorrect
         """
+        # Input validation
+        if X is None:
+            raise ValueError("X cannot be None")
+        
+        if y is None:
+            raise ValueError("y cannot be None")
+        
+        if not isinstance(X, (pd.DataFrame, np.ndarray)):
+            raise TypeError("X must be pandas DataFrame or numpy array")
+        
+        if not isinstance(y, (pd.Series, np.ndarray)):
+            raise TypeError("y must be pandas Series or numpy array")
+        
+        if hasattr(X, 'empty') and X.empty:
+            raise ValueError("X cannot be empty")
+        
+        if hasattr(y, 'empty') and y.empty:
+            raise ValueError("y cannot be empty")
+        
         try:
             # Convert to DataFrame for easier analysis
             if not isinstance(X, pd.DataFrame):
@@ -92,15 +115,27 @@ class DatasetIntelligence:
         n_samples, n_features = X.shape
         
         # Size classification
-        if n_samples < 1000:
+        # Use configurable thresholds from settings
+        try:
+            from config.settings import get_config_value
+            small_threshold = get_config_value('dataset_analysis', 'small_dataset_threshold', 1000)
+            medium_threshold = get_config_value('dataset_analysis', 'medium_dataset_threshold', 100000)
+            high_dim_threshold = get_config_value('dataset_analysis', 'high_dimensional_threshold', 1000)
+        except ImportError:
+            # Fallback to hardcoded values if config not available
+            small_threshold = 1000
+            medium_threshold = 100000
+            high_dim_threshold = 1000
+        
+        if n_samples < small_threshold:
             size_category = "small"
-            description = "Small dataset (< 1K samples)"
-        elif n_samples < 100000:
+            description = f"Small dataset (< {small_threshold:,} samples)"
+        elif n_samples < medium_threshold:
             size_category = "medium"
-            description = "Medium dataset (1K-100K samples)"
+            description = f"Medium dataset ({small_threshold:,}-{medium_threshold:,} samples)"
         else:
             size_category = "large"
-            description = "Large dataset (> 100K samples)"
+            description = f"Large dataset (> {medium_threshold:,} samples)"
         
         # Feature density
         feature_density = n_features / n_samples if n_samples > 0 else 0
@@ -113,7 +148,7 @@ class DatasetIntelligence:
             "feature_density": feature_density,
             "sample_feature_ratio": n_samples / n_features if n_features > 0 else 0,
             "memory_estimate_mb": self._estimate_memory_usage(X),
-            "is_high_dimensional": n_features > 1000,
+            "is_high_dimensional": n_features > high_dim_threshold,
             "is_wide": n_features > n_samples
         }
     
@@ -454,15 +489,24 @@ class DatasetIntelligence:
     
     def _generate_cache_key(self, X: pd.DataFrame, y: Union[pd.Series, np.ndarray]) -> str:
         """Generate cache key for dataset"""
-        return f"{X.shape}_{X.dtypes.sum()}_{len(y.unique())}"
+        dtypes_str = "|".join(str(dt) for dt in X.dtypes.tolist())
+        return f"{X.shape}_{dtypes_str}_{len(pd.Series(y).unique())}"
     
     def _get_fallback_analysis(self, X: Union[pd.DataFrame, np.ndarray], 
                               y: Union[pd.Series, np.ndarray]) -> Dict[str, Any]:
         """Fallback analysis when main analysis fails"""
+        if not isinstance(y, pd.Series):
+            y = pd.Series(y)
+        if len(y.unique()) < 20:
+            task_type = "classification"
+        elif pd.api.types.is_numeric_dtype(y):
+            task_type = "regression"
+        else:
+            task_type = "classification"
         return {
             "size_profile": {"category": "unknown", "n_samples": len(X), "n_features": X.shape[1] if hasattr(X, 'shape') else 1},
             "quality_profile": {"category": "unknown", "missing_ratio": 0},
             "type_profile": {"category": "unknown"},
-            "complexity_profile": {"task_type": "unknown"},
+            "complexity_profile": {"task_type": task_type},
             "error": "Analysis failed, using fallback"
         }

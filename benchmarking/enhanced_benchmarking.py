@@ -276,7 +276,7 @@ class EnhancedBenchmarking:
         """Benchmark AutoForge system"""
         try:
             # Import AutoML here to avoid circular imports
-            from api.automl import AutoML
+            from .automl import AutoML
             
             # Initialize AutoForge with reduced trials for speed
             automl = AutoML(

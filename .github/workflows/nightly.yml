@@ -1,0 +1,33 @@
+name: AutoForge Nightly
+
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+jobs:
+  full-tests-and-benchmarks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install package and test deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev,serve]"
+
+      - name: Run full test suite including slow
+        run: pytest tests/ -q --tb=short
+
+      - name: Run classical benchmark suite (iris only for CI time)
+        run: python -c "from benchmarking.classical_suite import run_classical_suite, write_benchmarks_md; write_benchmarks_md(run_classical_suite(datasets=['iris'], depths=['fast']))"
+
+      - name: Upload benchmark artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: benchmarks/results/

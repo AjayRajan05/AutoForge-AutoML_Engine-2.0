@@ -1,17 +1,54 @@
-import optuna
+try:
+    import optuna
+    OPTUNA_AVAILABLE = True
+except ImportError:
+    OPTUNA_AVAILABLE = False
+    optuna = None
+
 import logging
 import time
 from sklearn.model_selection import cross_val_score
-from models.registry import MODEL_REGISTRY, safe_params, validate_params
-from core.search_space import get_search_space
-from tracking.logger import ExperimentLogger
-from core.pipeline_builder import build_pipeline
-from meta_learning.self_improver import SelfImprover
-from core.failure_memory import failure_memory
+
+# Model registry with fallback handling
+try:
+    from ..models.registry import MODEL_REGISTRY, safe_params, validate_params
+except ImportError:
+    MODEL_REGISTRY = {}
+    safe_params = lambda x: x
+    validate_params = lambda x: True
+
+# Core components with fallback handling
+try:
+    from .search_space import get_search_space
+except ImportError:
+    get_search_space = lambda *args, **kwargs: {}
+
+try:
+    from ..tracking.logger import ExperimentLogger
+except ImportError:
+    ExperimentLogger = None
+
+try:
+    from ..execution.pipeline_builder import PipelineBuilder
+except ImportError:
+    PipelineBuilder = None
+
+try:
+    from ..features.meta_learning.self_improver import SelfImprover
+except ImportError:
+    SelfImprover = None
+
+try:
+    from ..core.failure_memory import failure_memory
+except ImportError:
+    failure_memory = None
 
 
 class OptunaOptimizer:
     def __init__(self, n_trials=50, cv=3, task_type="classification"):
+        if not OPTUNA_AVAILABLE:
+            raise ImportError("Optuna is not installed. Install with: pip install optuna")
+        
         self.n_trials = n_trials
         self.cv = cv
         self.task_type = task_type

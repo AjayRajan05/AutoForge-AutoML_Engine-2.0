@@ -7,9 +7,36 @@ import numpy as np
 import pandas as pd
 import logging
 from typing import Dict, List, Any, Optional, Union
+from sklearn.metrics import accuracy_score, f1_score, mean_squared_error, r2_score
 from .automl import AutoML
-from meta_learning.pattern_learner import PatternLearner, learn_from_experiment, get_recommendations
-from explainability.actionable_explainability import ActionableExplainability, generate_actionable_insights, get_actionable_summary
+
+# Import meta-learning components with fallback handling
+try:
+    from ..features.meta_learning.pattern_learner import PatternLearner
+except ImportError:
+    try:
+        from features.meta_learning.pattern_learner import PatternLearner
+    except ImportError:
+        PatternLearner = None
+    logging.warning("PatternLearner not available, self-improving features limited")
+
+try:
+    from ..intelligence.meta_optimizer import MetaOptimizer
+except ImportError:
+    MetaOptimizer = None
+    logging.warning("MetaOptimizer not available, self-improving features limited")
+
+try:
+    from ..features.explainability.actionable_explainability import ActionableExplainability
+except ImportError:
+    ActionableExplainability = None
+    logging.warning("ActionableExplainability not available, insights limited")
+
+try:
+    from ..features.explainability.decision_explainer import DecisionExplainer
+except ImportError:
+    DecisionExplainer = None
+    logging.warning("DecisionExplainer not available, explanations limited")
 
 logger = logging.getLogger(__name__)
 
@@ -52,8 +79,12 @@ class SelfImprovingAutoML(AutoML):
         # Self-improving features
         self.enable_pattern_learning = enable_pattern_learning
         self.enable_actionable_insights = enable_actionable_insights
-        self.pattern_learner = PatternLearner() if enable_pattern_learning else None
-        self.actionable_explainer = ActionableExplainability() if enable_actionable_insights else None
+        
+        # Initialize self-improving components
+        self.pattern_learner = PatternLearner() if (enable_pattern_learning and PatternLearner is not None) else None
+        self.meta_optimizer = MetaOptimizer() if (MetaOptimizer is not None) else None
+        self.actionable_explainability = ActionableExplainability() if (ActionableExplainability is not None) else None
+        self.decision_explainer = DecisionExplainer() if (DecisionExplainer is not None) else None
         
         # Learned patterns storage
         self.learned_patterns = {}
@@ -246,7 +277,7 @@ class SelfImprovingAutoML(AutoML):
             
             # Run enhanced benchmarking
             try:
-                from benchmarking.enhanced_benchmarking import EnhancedBenchmarking
+                from ..benchmarking.enhanced_benchmarking import EnhancedBenchmarking
                 benchmarking = EnhancedBenchmarking()
                 benchmark_results = benchmarking.run_comprehensive_benchmark()
                 analysis_results["benchmarking"] = benchmark_results
@@ -278,13 +309,11 @@ class SelfImprovingAutoML(AutoML):
             
             # Calculate performance metrics
             if self.task_type == "classification":
-                from sklearn.metrics import accuracy_score, f1_score
                 performance = {
                     "accuracy": accuracy_score(y, y_pred),
                     "f1_score": f1_score(y, y_pred, average='weighted')
                 }
             else:
-                from sklearn.metrics import mean_squared_error, r2_score
                 performance = {
                     "mse": mean_squared_error(y, y_pred),
                     "r2_score": r2_score(y, y_pred)

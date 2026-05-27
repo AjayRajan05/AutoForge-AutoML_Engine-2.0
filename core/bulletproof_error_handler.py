@@ -58,15 +58,7 @@ class BulletproofErrorHandler:
         self.recovery_success = {}
     
     def classify_error(self, error: Exception) -> str:
-        """
-        Classify error type for appropriate recovery
-        
-        Args:
-            error: Exception that occurred
-            
-        Returns:
-            Error classification string
-        """
+        """Classify error type for appropriate recovery"""
         error_str = str(error).lower()
         error_type = type(error).__name__.lower()
         
@@ -110,16 +102,7 @@ class BulletproofErrorHandler:
             return 'unknown_error'
     
     def handle_any_error(self, error: Exception, context: Dict[str, Any]) -> Tuple[bool, Dict[str, Any]]:
-        """
-        Universal error recovery
-        
-        Args:
-            error: Exception that occurred
-            context: Error context information
-            
-        Returns:
-            Tuple of (recovered, recovery_info)
-        """
+        """Universal error recovery"""
         # Classify error
         error_type = self.classify_error(error)
         
@@ -160,16 +143,12 @@ class BulletproofErrorHandler:
         # Get current parameters
         current_params = context.get('parameters', {})
         
-        # Use universal parameter handler
-        from core.universal_parameter_handler import universal_parameter_handler
-        
+        # Simple parameter fixes
         model_name = context.get('model_name', 'unknown')
         task_type = context.get('task_type', 'classification')
         
-        # Fix parameters
-        fixed_params = universal_parameter_handler.validate_and_correct(
-            model_name, current_params, task_type
-        )
+        # Apply universal parameter fixes
+        fixed_params = self._validate_and_correct_parameters(model_name, current_params, task_type)
         
         return {
             'parameters': fixed_params,
@@ -246,22 +225,16 @@ class BulletproofErrorHandler:
         # For other methods, return model_name
         for model_name in models_to_try:
             if model_name != current_model:
-                try:
-                    # Test if model can be created
-                    from models.registry import MODEL_REGISTRY
-                    if model_name in MODEL_REGISTRY:
-                        logger.info(f"Switching to fallback model: {model_name}")
-                        return {
-                            'model_name': model_name,
-                            'recovery_action': 'model_switch',
-                            'original_error': str(error)
-                        }
-                except Exception as e:
-                    logger.warning(f"Fallback model {model_name} also failed: {str(e)}")
-                    continue
+                logger.info(f"Switching to fallback model: {model_name}")
+                return {
+                    'model_name': model_name,
+                    'recovery_action': 'model_switch',
+                    'original_error': str(error)
+                }
         
         return {'error': 'No suitable fallback model found'}
     
+    #def reduce_complexity(self, error: Exception, context: Dict[str, Any]) -> Dict[str, Any]:
     def reduce_complexity(self, error: Exception, context: Dict[str, Any]) -> Dict[str, Any]:
         """Reduce complexity for memory errors"""
         logger.info("Reducing complexity...")
@@ -405,15 +378,29 @@ class BulletproofErrorHandler:
             'total_errors': sum(self.error_counts.values()),
             'total_recoveries': sum(self.recovery_success.values())
         }
+    
+    def _validate_and_correct_parameters(self, model_name: str, params: Dict[str, Any], task_type: str) -> Dict[str, Any]:
+        """Simple parameter validation and correction"""
+        corrected = params.copy()
+        
+        # Common parameter fixes
+        if 'n_estimators' in corrected:
+            corrected['n_estimators'] = max(1, min(corrected['n_estimators'], 1000))
+        
+        if 'max_depth' in corrected:
+            corrected['max_depth'] = max(1, min(corrected['max_depth'], 20))
+        
+        if 'learning_rate' in corrected:
+            corrected['learning_rate'] = max(0.0001, min(corrected['learning_rate'], 1.0))
+        
+        if 'random_state' not in corrected:
+            corrected['random_state'] = 42
+        
+        return corrected
 
 
 def bulletproof_method(max_retries: int = 3):
-    """
-    Decorator to make any method bulletproof
-    
-    Args:
-        max_retries: Maximum number of retry attempts
-    """
+    """Decorator to make any method bulletproof"""
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -439,16 +426,15 @@ def bulletproof_method(max_retries: int = 3):
                     recovered, recovery_info = error_handler.handle_any_error(e, context)
                     
                     if recovered:
-                        error_handler.recovery_count += 1
                         logger.info(f"Recovery successful for {func.__name__}, retrying...")
                         
-                        # Apply recovery info carefully - only pass valid kwargs
+                        # Apply recovery info carefully
                         if 'config' in recovery_info:
                             # Update config on the object if it has one
                             if hasattr(args[0], 'config'):
                                 args[0].config.update(recovery_info['config'])
                         
-                        # Don't pass model_name to fit/predict methods - they don't accept it
+                        # Don't pass model_name to fit/predict methods
                         if func.__name__ in ['fit', 'predict', 'predict_proba']:
                             # Filter out invalid kwargs for these methods
                             valid_kwargs = {}

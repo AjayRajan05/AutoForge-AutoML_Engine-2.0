@@ -1,0 +1,63 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "autoforge"
+version = "1.0.0"
+description = "Intelligent AutoML engine with automated preprocessing, model selection, HPO, and ensembling"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "AutoForge Team" }]
+dependencies = [
+    "numpy>=1.24",
+    "pandas>=2.0",
+    "scikit-learn>=1.3",
+    "xgboost>=2.0",
+    "joblib>=1.3",
+    "optuna>=3.4",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+lightgbm = ["lightgbm>=4.0"]
+dl = ["tensorflow>=2.15", "keras-tuner>=1.4"]
+serve = ["fastapi>=0.110", "uvicorn[standard]>=0.27"]
+dev = ["pytest>=7.4", "psutil>=5.9"]
+all = ["autoforge[lightgbm,dl,serve,dev]"]
+
+[project.scripts]
+autoforge = "main:main"
+
+[tool.setuptools]
+py-modules = ["main"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = [
+    "autoforge*",
+    "api*",
+    "benchmarking*",
+    "cli*",
+    "config*",
+    "core*",
+    "ensemble*",
+    "execution*",
+    "features*",
+    "input_output*",
+    "intelligence*",
+    "models*",
+    "optimizer*",
+    "persistence*",
+    "processors*",
+    "registry*",
+    "serving*",
+    "systemization*",
+    "tracking*",
+    "utils*",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
