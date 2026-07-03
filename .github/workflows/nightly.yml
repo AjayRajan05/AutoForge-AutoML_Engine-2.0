@@ -21,7 +21,8 @@ jobs:
           pip install -e ".[dev,serve]"
 
       - name: Run full test suite including slow
-        run: pytest tests/ -q --tb=short
+        shell: bash
+        run: python -m pytest tests/ -q --tb=short
 
       - name: Run classical benchmark suite (iris only for CI time)
         run: python -c "from benchmarking.classical_suite import run_classical_suite, write_benchmarks_md; write_benchmarks_md(run_classical_suite(datasets=['iris'], depths=['fast']))"

@@ -12,6 +12,9 @@ venv/
 *.joblib
 models/*/
 !models/.gitkeep
+!models/__init__.py
+!models/registry.py
+!models/advanced_models.py
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/

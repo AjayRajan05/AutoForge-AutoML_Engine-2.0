@@ -14,10 +14,10 @@ import pytest
 from unittest.mock import patch
 
 # Import AutoForge components
-from ..core.unified_automl import UnifiedAutoML
-from ..input_output.input_types import AutoMLInput
-from ..utils.performance_optimizer import performance_optimizer
-from ..utils.monitoring import autoforge_monitor
+from core.unified_automl import UnifiedAutoML
+from input_output.input_types import AutoMLInput
+from utils.performance_optimizer import performance_optimizer
+from utils.monitoring import autoforge_monitor
 
 logger = logging.getLogger(__name__)
 

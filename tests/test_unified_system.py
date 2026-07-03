@@ -221,7 +221,7 @@ class TestUnifiedAutoML(unittest.TestCase):
     
     def test_error_handling(self):
         """Test bulletproof error handling"""
-        from ..core.bulletproof_error_handler import BulletproofErrorHandler
+        from core.bulletproof_error_handler import BulletproofErrorHandler
         
         handler = BulletproofErrorHandler()
         
