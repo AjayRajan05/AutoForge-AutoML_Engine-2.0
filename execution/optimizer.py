@@ -55,7 +55,9 @@ class Optimizer:
                 combination_limit = 50
             
             if strategy == 'grid':
-                results = self._grid_search(model, X, y, param_space, max_trials)
+                results = self._grid_search(
+                    model, X, y, param_space, max_trials, combination_limit
+                )
             elif strategy == 'random':
                 results = self._random_search(model, X, y, param_space, max_trials)
             elif strategy == 'bayesian':
@@ -85,8 +87,9 @@ class Optimizer:
             logger.error(f"❌ Optimization failed: {e}")
             return self._get_fallback_results()
     
-    def _grid_search(self, model: Any, X: Any, y: Any, 
-                     param_space: Dict[str, Any], max_trials: int) -> Dict[str, Any]:
+    def _grid_search(self, model: Any, X: Any, y: Any,
+                     param_space: Dict[str, Any], max_trials: int,
+                     combination_limit: int = 50) -> Dict[str, Any]:
         """Simple grid search implementation"""
         trials = []
         best_score = -np.inf

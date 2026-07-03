@@ -44,4 +44,4 @@ jobs:
 
       - name: Lint core packages
         run: |
-          flake8 core/ execution/ input_output/ registry/ persistence/ --max-line-length=127 --count --statistics
+          flake8 core/ execution/ input_output/ registry/ persistence/ --count --statistics

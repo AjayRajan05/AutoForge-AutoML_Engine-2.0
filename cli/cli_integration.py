@@ -10,11 +10,11 @@ import os
 from typing import Dict, Any, List, Optional
 import pandas as pd
 
+# Root CLI entry (canonical)
 try:
-    from . import CLICommands, original_main
+    from main import main as root_main
 except ImportError:
-    CLICommands = None
-    original_main = None
+    root_main = None
 
 # Import AutoForge components
 try:
@@ -40,9 +40,8 @@ class CLIIntegrator:
     def _check_available_commands(self) -> Dict[str, bool]:
         """Check which CLI commands are available"""
         commands = {
-            'original_cli': original_main is not None,
-            'cli_commands': CLICommands is not None,
-            'autoforge_cli': True  # Always available
+            'root_cli': root_main is not None,
+            'autoforge_cli': True,
         }
         
         available_count = sum(commands.values())

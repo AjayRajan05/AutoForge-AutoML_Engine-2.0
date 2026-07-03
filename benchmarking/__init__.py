@@ -1,23 +1,23 @@
-"""
-📊 AutoForge Benchmarking Integration
-Integration with existing benchmarking modules
-"""
+"""AutoForge benchmarking — classical suite and integration helpers."""
 
-try:
-    from ...benchmarking.automl_benchmark import AutoMLBenchmark
-    from ...benchmarking.benchmark_system import BenchmarkSystem
-    from ...benchmarking.enhanced_benchmarking import EnhancedBenchmarking
-    
-    __all__ = ['AutoMLBenchmark', 'BenchmarkSystem', 'EnhancedBenchmarking']
-    
-except ImportError as e:
-    # Fallback if benchmarking modules have import issues
-    __all__ = []
-    AutoMLBenchmark = None
-    BenchmarkSystem = None
-    EnhancedBenchmarking = None
+from .benchmark_integration import (
+    BenchmarkingIntegrator,
+    benchmarking_integrator,
+    benchmark_autoforge,
+    compare_with_existing_systems,
+)
+from .classical_suite import (
+    evaluate_exit_criteria,
+    run_classical_suite,
+    write_benchmarks_md,
+)
 
-# Import integration layer
-from .benchmark_integration import BenchmarkingIntegrator, benchmarking_integrator, benchmark_autoforge, compare_with_existing_systems
-
-__all__.extend(['BenchmarkingIntegrator', 'benchmarking_integrator', 'benchmark_autoforge', 'compare_with_existing_systems'])
+__all__ = [
+    "BenchmarkingIntegrator",
+    "benchmarking_integrator",
+    "benchmark_autoforge",
+    "compare_with_existing_systems",
+    "run_classical_suite",
+    "write_benchmarks_md",
+    "evaluate_exit_criteria",
+]
